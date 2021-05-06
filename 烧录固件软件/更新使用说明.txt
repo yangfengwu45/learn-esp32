@@ -1,0 +1,11 @@
+　　flash download tools(ESP32模组烧录软件)是一款专用于ESP32系列的模组烧录软件，利用软件能够有效的对固件进行升级，只需要输入COM端口即可进行快速的烧录，有需要的可以下载使用。
+　　功能介绍
+　　通过这款flash_download_tools串口Wifi固件烧录器能够非常方便快捷的进行固件的烧录工作，支持ESP8266, ESP8285, ESP32以及ESP32D2WD等串口WIFI模块。
+　　使用方法
+　　准备文件、刷写：
+　　1. bootloader.bin 文件 ，一共提供了9款bootloader，选自己合适的，我选的是bootloader_dout_80m.bin，刷写地址0x1000；
+　　2. boot_app0.bin ，刷写地址0xe000；
+　　3. 分区文件?JFirmware_ESP32_4M_v1.3.partitions.bin ，刷写地址0x8000 ；
+　　4. 程序主体 ?JFirmware_ESP32_4M_v1.3(181015.1).bin， 刷写地址0x10000;
+　　注意：第一次刷写本固件，需要4个bin一起刷，但以后升级只需要第4步来刷写程序主体即可，OTA升级也是只需要程序主体；
+　　选择完成后，点击START，等待完成即可！
