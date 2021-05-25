@@ -1,0 +1,3 @@
+source "H:/LearnESP32/esp-if/components/bootloader/Kconfig.projbuild"
+source "H:/LearnESP32/esp-if/components/esptool_py/Kconfig.projbuild"
+source "H:/LearnESP32/esp-if/components/partition_table/Kconfig.projbuild"

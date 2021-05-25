@@ -1,0 +1,1 @@
+#define test_value 1
