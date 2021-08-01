@@ -1,5 +1,0 @@
-source "H:/LearnESP32/esp-if/components/efuse/Kconfig"
-source "H:/LearnESP32/esp-if/components/esp32/Kconfig"
-source "H:/LearnESP32/esp-if/components/esp_common/Kconfig"
-source "H:/LearnESP32/esp-if/components/log/Kconfig"
-source "H:/LearnESP32/esp-if/components/spi_flash/Kconfig"
