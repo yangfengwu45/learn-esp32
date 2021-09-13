@@ -1,0 +1,59 @@
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
+#include "driver/timer.h"
+#include "esp_timer.h"
+
+#define gpio_pin 25
+
+
+
+esp_timer_handle_t esp_timer_handle_t1 = 0;
+
+
+/*定时器中断函数*/
+void esp_timer_cb(void *arg){
+    /*设置gpio输出高低电平*/
+    gpio_set_level(gpio_pin, 1-gpio_get_level(gpio_pin));
+}
+
+void gpio_init(void){
+    gpio_config_t io_conf;
+    //禁止中断
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    //输入输出模式
+    io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
+    //配置要设置的引脚
+    io_conf.pin_bit_mask = (unsigned long long)1<<gpio_pin;
+    //禁止下拉
+    io_conf.pull_down_en = 0;
+    //禁止上拉
+    io_conf.pull_up_en = 0;
+    //配置gpio(不设置上下拉默认输出低电平)
+    gpio_config(&io_conf);
+
+}
+
+void app_main(void)
+{ 
+    gpio_init();//初始化gpio
+
+    //定时器结构体初始化
+    esp_timer_create_args_t esp_timer_create_args_t1 = {
+        .callback = &esp_timer_cb, //定时器回调函数
+        .arg = NULL, //传递给回调函数的参数
+        .name = "esp_timer" //定时器名称
+    };
+
+    /*创建定时器*/                      //初始化参数              //定时器句柄,用于后期对定时器做其它操作
+    esp_err_t err = esp_timer_create(&esp_timer_create_args_t1, &esp_timer_handle_t1);
+    /*以循环方式启动定时器*/           //定时器句柄       //us级定时,1000*1000就是1s
+    err = esp_timer_start_periodic(esp_timer_handle_t1, 1000 * 1000);
+    /*单次启动*/
+    //err = esp_timer_start_once(esp_timer_handle_t1, 1000 * 1000)
+    if(err == ESP_OK){
+        printf("ok!\r\n");
+    }
+}

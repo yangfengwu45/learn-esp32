@@ -1,0 +1,95 @@
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+#include "esp_log.h"
+
+
+#define EXAMPLE_ESP_WIFI_SSID      "QQQQQQ"
+#define EXAMPLE_ESP_WIFI_PASS      "11223344"
+
+
+static const char *TAG = "wifi station";
+
+
+static void event_handler(void* arg, esp_event_base_t event_base,
+                                int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {//配置好了wifi的STA模式
+        esp_wifi_connect();//连接热点
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {//和路由器断开
+        esp_wifi_connect();//连接热点
+        ESP_LOGI(TAG,"connect to the AP fail");
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {//连接上路由器(获取到了分配的IP地址)
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ESP_LOGI(TAG, "got ip:" IPSTR, IP2STR(&event->ip_info.ip));
+    }
+}
+
+void wifi_init_sta(void)
+{
+    ESP_ERROR_CHECK(esp_netif_init());//初始化内部的lwip
+
+    ESP_ERROR_CHECK(esp_event_loop_create_default());//创建系统事件任务
+    esp_netif_create_default_wifi_sta();//创建有 TCP/IP 堆栈的默认网络接口实例绑定 station 或 AP。
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));//创建 Wi-Fi 驱动程序任务，并初始化 Wi-Fi 驱动程序。
+
+    esp_event_handler_instance_t instance_any_id;
+    esp_event_handler_instance_t instance_got_ip;
+    /*注册系统事件回调函数*/
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,         //wifi状态改变事件
+                                                        ESP_EVENT_ANY_ID,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_any_id));
+
+    /*注册系统事件回调函数*/
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,            //IP地址改变事件
+                                                        IP_EVENT_STA_GOT_IP,
+                                                        &event_handler,
+                                                        NULL,
+                                                        &instance_got_ip));
+
+    /*配置连接的热点参数*/
+    wifi_config_t wifi_config = {
+        .sta = {
+            .ssid = EXAMPLE_ESP_WIFI_SSID,
+            .password = EXAMPLE_ESP_WIFI_PASS,
+            .threshold.authmode = WIFI_AUTH_WPA2_PSK,//加密方式
+            /*配置pmf,当前最新加密技术*/
+            .pmf_cfg = {
+                .capable = true,  //告诉热点这边有能力使用PMF进行加密通信(防止窃听密码)
+                .required = false //告诉热点这边不强制要求使用PMF进行加密通信(防止窃听密码)
+            },
+        },
+    };
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );//设置STA模式
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );//配置STA参数
+    ESP_ERROR_CHECK(esp_wifi_start() );//启动
+
+
+    /* 取消注册事件回调 */
+    //ESP_ERROR_CHECK(esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip));
+    //ESP_ERROR_CHECK(esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id));
+}
+
+void app_main(void)
+{
+    //初始化 NVS(配置WiFi的参数存储需要用到NVS)
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
+    wifi_init_sta();
+}

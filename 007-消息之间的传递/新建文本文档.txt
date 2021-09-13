@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
+
+char data[10]="01234567";
+
+static xQueueHandle xQueueHandle1 = NULL;
+
+//任务函数
+static void  function(void *pvParameters)
+{
+    char datarecv[12];
+    while(1)
+    {
+        //如果缓存里面有数据;则取出数据(存储到datarecv); 无限期的等着(portMAX_DELAY),直到有数据
+       if(xQueueReceive(xQueueHandle1, &datarecv, portMAX_DELAY)) {
+            printf("datarecv=%s\n", datarecv);
+            fflush(stdout);
+        }
+    }
+}
+//任务函数
+static void  function_1(void *pvParameters)
+{
+    while(1)
+    {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);//延时约1000ms
+        //向缓存管理中存储数据; 如果缓存不够,则等待(最长等待10ms); 存储失败返回 pdFALSE
+        xQueueSend(xQueueHandle1, (void *) &data, 10/portTICK_PERIOD_MS);
+    }
+}
+
+
+void app_main(void)
+{    
+    //初始化缓存管理,缓存数据的最大条数是5条,每条数据的长度是10字节
+    xQueueHandle1 = xQueueCreate(5, 10);
+
+    xTaskCreate(function, "function", 2048, NULL, 10, NULL);
+
+    xTaskCreate(function_1, "function_1", 2048, NULL, 11, NULL);
+}

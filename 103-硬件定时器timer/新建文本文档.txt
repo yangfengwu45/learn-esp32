@@ -1,0 +1,76 @@
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
+#include "driver/timer.h"
+
+#define gpio_pin 25
+
+
+/*定时器中断函数
+因为设置中断的时候,中断设置的 ESP_INTR_FLAG_IRAM 所以中断函数需要加 IRAM_ATTR
+*/
+void IRAM_ATTR timer_group0_isr(void *para)
+{
+    //获取定时器分组0中的哪一个定时器产生了中断
+    uint32_t timer_intr = timer_group_get_intr_status_in_isr(TIMER_GROUP_0);
+    if (timer_intr & TIMER_INTR_T0) {//定时器0分组的0号定时器产生中断
+        /*清除中断*/
+        timer_group_clr_intr_status_in_isr(TIMER_GROUP_0, TIMER_0);
+        /*重新使能定时器中断*/    
+        timer_group_enable_alarm_in_isr(TIMER_GROUP_0, TIMER_0);
+    }
+
+    /*设置gpio输出高低电平*/
+    gpio_set_level(gpio_pin, 1-gpio_get_level(gpio_pin));
+}
+
+void gpio_init(void){
+    gpio_config_t io_conf;
+    //禁止中断
+    io_conf.intr_type = GPIO_PIN_INTR_DISABLE;
+    //输入输出模式
+    io_conf.mode = GPIO_MODE_INPUT_OUTPUT;
+    //配置要设置的引脚
+    io_conf.pin_bit_mask = (unsigned long long)1<<gpio_pin;
+    //禁止下拉
+    io_conf.pull_down_en = 0;
+    //禁止上拉
+    io_conf.pull_up_en = 0;
+    //配置gpio(不设置上下拉默认输出低电平)
+    gpio_config(&io_conf);
+
+}
+
+void app_main(void)
+{ 
+    gpio_init();//初始化gpio
+
+    /*设置定时器初始化参数*/
+    timer_config_t config = {
+        .divider = 8,//分频系数[2-65535]
+        .counter_dir = TIMER_COUNT_UP,//计数方式是向上计数
+        .counter_en = TIMER_PAUSE,//调用timer_init函数以后不启动计数,调用timer_start时才开始计数
+        .alarm_en = TIMER_ALARM_EN,//到达计数值启动报警(计数值溢出,进入中断)
+        .auto_reload = 1,//自动重新装载预装值
+    };
+    /*初始化定时器;TIMER_GROUP_0(定时器分组0); TIMER_0(分组0中的0号定时器)*/
+    timer_init(TIMER_GROUP_0, TIMER_0, &config);
+
+    /*设置定时器预装值,0*/
+    timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0x00000000ULL);
+    /*设置报警阈值*/ // 1000[定时1000ms]*(TIMER_BASE_CLK[定时器时钟]/8[分频系数]/1000[想延时ms级别所以除以1000]),
+    timer_set_alarm_value(TIMER_GROUP_0, TIMER_0, 1000*(TIMER_BASE_CLK/8/1000) );
+    /*使能定时器中断*/
+    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
+    /*注册定时器中断函数*/
+    timer_isr_register(TIMER_GROUP_0, TIMER_0, 
+        timer_group0_isr,//定时器回调函数
+        (void *) TIMER_0, //传递给定时器回调函数的参数
+        ESP_INTR_FLAG_IRAM, //把中断放到 IRAM 中
+        NULL //调用成功以后返回中断函数的地址,一般用不到
+    );
+    /*启动定时器*/
+    timer_start(TIMER_GROUP_0, TIMER_0);
+}

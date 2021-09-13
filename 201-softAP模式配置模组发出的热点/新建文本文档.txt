@@ -1,0 +1,87 @@
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "freertos/event_groups.h"
+#include "esp_system.h"
+#include "esp_wifi.h"
+#include "nvs_flash.h"
+#include "esp_log.h"
+
+
+#define EXAMPLE_ESP_WIFI_SSID      "ESP32_WIFI"  //设置模块发出的无线名称
+#define EXAMPLE_ESP_WIFI_PASS      "11223344"    //无线密码
+#define EXAMPLE_ESP_WIFI_CHANNEL   11            //信道(默认1)
+#define EXAMPLE_MAX_STA_CONN       5             //最大连接数(最大10个)
+
+static const char *TAG = "wifi softAP";
+
+/*WiFi事件回调*/
+static void wifi_event_handler(void* arg, esp_event_base_t event_base,
+                                    int32_t event_id, void* event_data)
+{
+    if (event_id == WIFI_EVENT_AP_STACONNECTED) {//有设备连接上ESP32的热点
+        wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+        /*打印连接设备的MAC地址*/
+        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d", MAC2STR(event->mac), event->aid);
+    } 
+    else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
+        wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
+
+        /*打印断开设备的MAC地址*/
+        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",MAC2STR(event->mac), event->aid);
+    }
+}
+
+void wifi_init_softap(void)
+{
+    ESP_ERROR_CHECK(esp_netif_init());//初始化内部的lwip
+    ESP_ERROR_CHECK(esp_event_loop_create_default());//创建系统事件任务
+    esp_netif_create_default_wifi_ap();//创建有 TCP/IP 堆栈的默认网络接口实例绑定AP。
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));//创建 Wi-Fi 驱动程序任务，并初始化 Wi-Fi 驱动程序。
+
+
+    /*注册系统事件回调函数*/
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT,           //WiFi事件函数
+                                                        ESP_EVENT_ANY_ID,     //事件ID
+                                                        &wifi_event_handler,  //回调函数
+                                                        NULL,
+                                                        NULL));
+    /*配置热点*/
+    wifi_config_t wifi_config = {
+        .ap = {
+            .ssid = EXAMPLE_ESP_WIFI_SSID,             
+            .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
+            .channel = EXAMPLE_ESP_WIFI_CHANNEL,
+            .password = EXAMPLE_ESP_WIFI_PASS,
+            .max_connection = EXAMPLE_MAX_STA_CONN,
+            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+        },
+    };
+    /*如果密码长度是0,则不设置密码*/
+    if (strlen(EXAMPLE_ESP_WIFI_PASS) == 0) {
+        wifi_config.ap.authmode = WIFI_AUTH_OPEN;
+    }
+
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));//设置AP模式
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));//配置AP参数
+    ESP_ERROR_CHECK(esp_wifi_start());//启动
+}
+
+void app_main(void)
+{
+    //初始化 NVS(配置WiFi的参数存储需要用到NVS)
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+      ESP_ERROR_CHECK(nvs_flash_erase());
+      ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
+    wifi_init_softap();
+}

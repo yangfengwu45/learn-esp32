@@ -1,0 +1,67 @@
+#include <stdio.h>
+#include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/queue.h"
+#include "driver/gpio.h"
+#include "driver/timer.h"
+#include "esp_timer.h"
+#include "driver/uart.h"
+#include "esp_log.h"
+#include "driver/spi_master.h"
+
+
+#define PIN_NUM_MISO 12
+#define PIN_NUM_MOSI 13
+#define PIN_NUM_CLK  14
+#define PIN_NUM_CS   15
+
+spi_device_handle_t spi_device;//存储所配置的SPI句柄
+
+void app_main(void)
+{
+    esp_err_t ret;
+
+    //配置SPI总线参数
+    spi_bus_config_t buscfg={
+        .miso_io_num = PIN_NUM_MISO,//设置主机输入从机输出引脚(接收数据引脚)
+        .mosi_io_num = PIN_NUM_MOSI,//设置主机输出从机输入引脚(发送数据引脚)
+        .sclk_io_num = PIN_NUM_CLK,//设置时钟引脚
+        .quadwp_io_num = -1,//不使用wp信号线
+        .quadhd_io_num = -1,//不使用hd信号线
+        .max_transfer_sz = SOC_SPI_MAXIMUM_BUFFER_SIZE,//一次性最大传输字节个数;默认为SOC_SPI_MAXIMUM_BUFFER_SIZE(启用DMA时需要设置为0)
+    };
+    //初始化配置SPI总线(配置HSPI);最后设置为0为不启用DMA
+    ret = spi_bus_initialize(HSPI_HOST, &buscfg, 0);
+    ESP_ERROR_CHECK(ret);
+
+
+    //配置SPI数据传输参数(可以新建多个这种结构体变量,相当于挂载SPI设备,一个SPI最多挂载3个设备,需要设置不同的片选引脚)
+    spi_device_interface_config_t devcfg={
+        .address_bits=0,                        //不需要地址数据
+        .clock_speed_hz=40*1000*1000,           //频率40M
+        .command_bits=0,                        //不需要命令数据
+        .mode=0,                                //SPI模式(0,1,2,3)
+        .spics_io_num=PIN_NUM_CS,               //设置CS引脚
+        .queue_size=1,                          //传输(事务)队列大小(必须设置,先设置1,后面会说明这个有什么用)
+    };
+    //把传输参数配置进SPI总线
+    ret = spi_bus_add_device(HSPI_HOST, &devcfg, &spi_device);
+    ESP_ERROR_CHECK(ret);
+
+
+    /*设置传输的数据*/
+    const char spi_data[2]={0xaa,0x55};//2字节数据
+    /*传输事务*/
+    spi_transaction_t spi_transaction;
+    memset(&spi_transaction, 0, sizeof(spi_transaction)); 
+
+    spi_transaction.tx_buffer=spi_data; //发送的数据地址
+    spi_transaction.length=2*8;         //传输数据大小(以数据位为单位);传两字节数据所以是2*8
+    
+    while(1){
+        spi_device_transmit(spi_device, &spi_transaction);//使用SPI发送数据
+
+        vTaskDelay(1000 / portTICK_PERIOD_MS); 
+    }
+}

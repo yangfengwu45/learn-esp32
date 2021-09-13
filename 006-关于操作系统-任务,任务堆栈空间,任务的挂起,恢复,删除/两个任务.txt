@@ -1,0 +1,36 @@
+#include <stdio.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+//任务函数
+static void  function(void *pvParameters)
+{
+    while(1)
+    {
+        vTaskDelay(500 / portTICK_PERIOD_MS);//延时约500ms
+        printf("Hello world!\r\n");
+        fflush(stdout);//手动调用刷新缓存,让printf输出数据
+    }
+}
+
+//任务函数
+static void  function_1(void *pvParameters)
+{
+    while(1)
+    {
+        vTaskDelay(500 / portTICK_PERIOD_MS);//延时约500ms
+        printf("1111111111!\r\n");
+        fflush(stdout);//手动调用刷新缓存,让printf输出数据
+    }
+}
+
+void app_main(void)
+{
+    //创建任务
+    //第一个function是任务函数; 第二个"function"是给任务取个名字
+    //第三个2048是保存任务数据的栈区大小; 第四个传递给任务的参数写的NULL
+    //第五个任务的优先等级是10;  第六个记录任务的变量写的NULL
+    xTaskCreate(function, "function", 2048, NULL, 10, NULL);
+
+    xTaskCreate(function_1, "function_1", 2048, NULL, 11, NULL);
+}
