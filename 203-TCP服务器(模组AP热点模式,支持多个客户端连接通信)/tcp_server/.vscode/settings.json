@@ -1,0 +1,14 @@
+{
+    "idf.portWin": "COM6",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "*.h": "c",
+        "*.c": "c",
+        "typeinfo": "c",
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "*.inc": "c",
+        "*.ipp": "c"
+    }
+}
