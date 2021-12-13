@@ -1,0 +1,19 @@
+<view style="width: 750rpx; background: black; height: 507rpx; display: block; box-sizing: border-box">
+  <image style="position: relative; width: 750rpx; height: 480rpx; display: inline-block; box-sizing: border-box; left: 0rpx; top: 17rpx"
+    src="{{imageUrl}}" />
+</view>
+<view style="width: 750rpx; background: #d1d1d1; height: 507rpx; display: block; box-sizing: border-box">
+  <button
+    style="left: -5rpx; top: 15rpx; position: relative; width: 209rpx; height: 94rpx; display: block; box-sizing: border-box" bindtouchstart="bindtouchstart1" bindtap="bindtap1">前进</button>
+
+  <button
+    style="position: relative; left: -214rpx; top: 90rpx; width: 209rpx; height: 94rpx; display: block; box-sizing: border-box" bindtouchstart="bindtouchstart3" bindtap="bindtap3">左转</button>
+
+  <button
+    style="width: 209rpx; height: 94rpx; display: block; box-sizing: border-box; left: 204rpx; top: -5rpx; position: relative" bindtouchstart="bindtouchstart4" bindtap="bindtap4">右转</button>
+
+  <button style="width: 209rpx; height: 94rpx; display: block; box-sizing: border-box; left: -5rpx; top: 68rpx; position: relative" bindtouchstart="bindtouchstart2" bindtap="bindtap2" >后退</button>
+</view>
+
+
+
